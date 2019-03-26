@@ -1,15 +1,341 @@
+
 import cv2
 import numpy as np
 import math
 from os import listdir
 from os.path import isfile, join
+import csv
+import os
+import random
 
-#Trasaturile din imagine de care avem nevoie
-nr_convex_def = 0 #numarul defectelor de convexitate din interiorul mainii
-convex_def_depth = list() #lista cu adancimea defectelor de convexitate din interiorul mainii 
-nr_fingers = 0 # numarul degetelor
+key_points_number = 20
+dists = list()
+slopes =list()
+conv_def = list()
+idx = 0
 
-#def remove_lines(img, height, width)
+def write_to_csv(label):
+	global key_points
+	global idx
+	#x =random.randint(0, 20)
+	if idx % 50 == 0:
+		for data in key_points:
+			test_data = open("test_data.csv", "a")
+			test_data.write(str(data) )
+			test_data.write(" , ")
+			
+		test_data.write(label)
+		test_data.write("\n")
+		test_data.close()
+		key_points.clear()		
+	else:
+		for data in key_points:
+			train_data = open("train_data.csv", "a")
+			train_data.write(str(data) )
+			train_data.write(" , ")
+			
+		train_data.write(label)
+		train_data.write("\n")
+		train_data.close()
+		key_points.clear()	
+
+def create_feature_array(key_points, ref_point):
+	for x in range(len(key_points)):
+		key_points[x] = calculate_distance(key_points[x], ref_point)
+	return key_points
+	
+def compute_center(cnt):
+	moments = cv2.moments(cnt)
+	cx = int(moments["m10"] / moments["m00"])
+	cy = int(moments["m01"] / moments["m00"])
+	center = [cx, cy]
+	return center
+	
+def get_max_contour(img):
+	global label
+	_, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	drawing = np.zeros(img.shape, np.uint8)
+	#print(drawing)
+	max_area = 0.0
+	ci = 0
+	#print(len(contours))
+	for i in range (len(contours)):
+		cnt = contours[i]
+		area = cv2.contourArea(cnt)
+		if (area > max_area):
+			max_area = area
+			ci = i		
+	
+	cnt = contours[ci]
+	#print(cnt)
+	#cv2.drawContours(drawing, [cnt], 0, (255,255,255), 2)
+	#cv2.imshow(label + "adadasdas", drawing)
+	return cnt
+
+def calculate_distance(start, end):
+	dist = math.sqrt( (start[1] - end[1]) ** 2 + (start[0] - end[0]) ** 2)
+	return dist
+	
+def get_key_points(cnt):
+	key_points = list()
+	key_points.append(cnt[0][0])
+	dist = 0
+	start_point = cnt[0][0]
+	end_point = 0
+	i  = 5
+	pts_number = len(cnt)
+	while i < pts_number:
+		while dist < 10:
+			if i >= pts_number:
+				break
+			end_point = cnt[i][0]
+			dist = calculate_distance(start_point, end_point)
+			i = i + 5
+		if dist >= 10:
+			key_points.append(end_point)
+			start_point = end_point
+			dist = 0
+	return key_points
+
+def delete_key_points(key_points, points_nr):
+	pts_dist = dict()
+	aux = list()
+	for x in range(points_nr):
+		for i in range(len(key_points)):
+			if i == 0:
+				dist1 = calculate_distance( key_points[len(key_points)-1], key_points[0] )
+				dist2 = calculate_distance( key_points[0] ,  key_points[1] )
+				pts_dist[i] = float(dist1 + dist2) / float(2)
+			elif i == 	len(key_points)-1:
+				dist1 = calculate_distance( key_points[len(key_points)-2], key_points[len(key_points)-1] )
+				dist2 = calculate_distance( key_points[len(key_points)-1], key_points[0] )
+				pts_dist[i] = float(dist1 + dist2) / float(2)				
+			else:
+				dist1 = calculate_distance( key_points[i], key_points[i - 1] )
+				dist2 = calculate_distance( key_points[i], key_points[i + 1] )
+				pts_dist[i] = float(dist1 + dist2) / float(2)				
+		sort_dict = [(k, pts_dist[k]) for k in sorted(pts_dist, key=pts_dist.get, reverse=False)]	
+		idx = sort_dict[0][0]
+		sort_dict.clear()
+		pts_dist.clear()
+		for j in range(len(key_points)):		
+			if j != idx:
+				aux.append(key_points[j])
+		key_points = aux.copy()
+		aux.clear()
+		j = 0
+	#print(len(key_points))
+	return key_points
+
+def add_key_points(key_points, points_nr, cnt):
+	pts_dist = dict()
+	aux = list()
+	for x in range(points_nr):
+		#print("x = " + str(x))
+		aux = key_points.copy()
+		for i in range(len(key_points)):
+			if i == len(key_points)-1:
+				dist1 = calculate_distance( key_points[len(key_points)-1], key_points[0] )
+				pts_dist[i] = dist1	
+			else:
+				dist1 = calculate_distance( key_points[i], key_points[i + 1] )
+				pts_dist[i] = dist1				
+		sort_dict = [(k, pts_dist[k]) for k in sorted(pts_dist, key=pts_dist.get, reverse=True)]
+		idx = sort_dict[1][0]		
+		ref_point1 = key_points[idx]
+		if idx < len(key_points)-1:
+			ref_point2 = key_points[idx+1]
+		else:
+			ref_point2 = key_points[0]
+		for y in range(len(cnt)):
+			if cnt[y][0][0] == ref_point1[0] and cnt[y][0][1] == ref_point1[1]:			
+				if y == len(cnt)-1:
+					cnt_idx = 0
+				else:
+					cnt_idx = y + 1
+					
+				dist1 = calculate_distance(ref_point1, cnt[cnt_idx][0])
+				dist2 = calculate_distance(ref_point2, cnt[cnt_idx][0])
+				last_pt_dists = abs(dist2 - dist1)
+				
+				if cnt_idx == len(cnt)-1:
+					cnt_idx = 0
+				else:	
+					cnt_idx = cnt_idx + 1
+					
+				dist1 = calculate_distance(ref_point1, cnt[cnt_idx][0])
+				dist2 = calculate_distance(ref_point2, cnt[cnt_idx][0])
+				act_pt_dists = abs(dist2 - dist1)
+				
+				while last_pt_dists < act_pt_dists:
+					if cnt_idx == len(cnt)-1:
+						cnt_idx = 0
+					else:	
+						cnt_idx = cnt_idx + 1
+					last_pt_dists = act_pt_dists
+					dist1 = calculate_distance(ref_point1, cnt[cnt_idx][0])
+					dist2 = calculate_distance(ref_point2, cnt[cnt_idx][0])
+					act_pt_dists = abs(dist2 - dist1)
+					
+				point_to_add = cnt[cnt_idx][0]
+				break				
+		key_points.clear()
+		for k in range(0, len(aux)+1):
+			if k == idx + 1:
+				key_points.append(point_to_add)
+			elif k <= idx:
+				key_points.append(aux[k])
+			else:
+				key_points.append(aux[k-1])
+				
+		aux.clear()	
+		sort_dict.clear()
+		pts_dist.clear()
+		#print(len(key_points))
+		#print(key_points)
+	return key_points	
+	
+def adjust_key_pts(key_points, cnt):
+	if len(key_points) > 20:
+		key_points = delete_key_points(key_points, len(key_points) - 20)
+	else:
+		key_points = add_key_points(key_points, 20 - len(key_points), cnt)
+	return key_points	
+	
+def calculate_avg(data):
+	total_sum = 0.0
+	for x in data:
+		total_sum = total_sum + x	
+	avg_value = total_sum / float(len(data))
+	return avg_value
+
+def hand_detection_model(img):
+	global mypath
+	
+	frameCopy = img.copy()
+	protoFile = "pose_deploy.prototxt"
+	weightsFile = "pose_iter_102000.caffemodel"
+	
+	nPoints = 22
+	inHeight = img.shape[0]
+	inWidth  = img.shape[1]
+	
+	net = cv2.dnn.readNetFromCaffe(protoFile, weightsFile)
+	npBlob = cv2.dnn.blobFromImage(img, 1.0 / 255, (inWidth, inHeight),(0, 0, 0), swapRB=False, crop=False)
+	net.setInput(npBlob)
+ 
+	output = net.forward()
+	
+	points = []
+	#print(output)
+	for i in range(nPoints):
+		# confidence map of corresponding body's part.
+		probMap = output[0, i, :, :]
+		probMap = cv2.resize(probMap, (inWidth, inHeight))
+
+		# Find global maxima of the probMap.
+		minVal, prob, minLoc, point = cv2.minMaxLoc(probMap)
+		print("minVal = "+ str(minVal) + "  prob = " + str(prob) + "  minLoc = " + str(minLoc) + "  point = " + str(point) ) 
+		if prob > 0.001 :
+			cv2.circle(frameCopy, (int(point[0]), int(point[1])), 8, (0, 255, 255), thickness=-1, lineType=cv2.FILLED)
+			#cv2.putText(frameCopy, "{}".format(i), (int(point[0]), int(point[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, lineType=cv2.LINE_AA)
+	 
+			# Add the point to the list if the probability is greater than the threshold
+			points.append((int(point[0]), int(point[1])))
+		else :
+			points.append(None)
+	cv2.imshow('Output-Keypoints', frameCopy)
+
+def get_line_length_slope2(img, file):
+	global features
+	global dists
+	global slopes
+	key_lines = np.zeros( (img.shape[0], img.shape[1]), np.uint8)
+	lines_coords = cv2.HoughLinesP(img, 1, np.pi/180,10 , 1000)
+	if lines_coords is not None:
+		for i in range(0, len(lines_coords)):
+			line = lines_coords[i][0]
+			dist = math.sqrt( (line[2] - line[0]) ** 2 + (line[3] - line[1]) ** 2)
+			if dist > 20:
+				if line[3] == line[1] or line[2] == line[0] or abs(line[3] - line[1]) < 0.001 or abs(line[2] - line[0]) < 0.001:
+					slope = 0
+				else:	
+					slope = (line[3] - line[1]) / (line[2] - line[0])
+
+				dists.append(dist)
+				slopes.append(slope)
+				cv2.line(key_lines, (line[0], line[1]), (line[2], line[3]), (255,0,0),2)
+	features.append(len(dists))
+	if len(dists) != 0:
+		features.append(calculate_avg(dists))
+		features.append(calculate_avg(slopes))
+		dists.clear()
+		slopes.clear()
+	else:
+		features.append(0)
+		features.append(0)
+	
+def get_line_length_slope(img, file):
+	global features
+	key_lines = np.zeros( (img.shape[0], img.shape[1]), np.uint8)
+	lines_coords = cv2.HoughLinesP(img, 1, np.pi/180,10 , 1000)
+	if lines_coords is not None:
+		for i in range(0, len(lines_coords)):
+			line = lines_coords[i][0]
+			dist = math.sqrt( (line[2] - line[0]) ** 2 + (line[3] - line[1]) ** 2)
+			if dist > 20:
+				if line[3] == line[1] or line[2] == line[0] or abs(line[3] - line[1]) < 0.001 or abs(line[2] - line[0]) < 0.001:
+					slope = 0
+				else:	
+					slope = (line[3] - line[1]) / (line[2] - line[0])
+				#print ("line = " + str(line))
+				#print("slope = " + str(slope))
+				features.append(dist)
+				features.append(slope)
+				cv2.line(key_lines, (line[0], line[1]), (line[2], line[3]), (255,0,0),2)	
+	cv2.imshow(file, key_lines)
+
+def skeletonize(img):
+    img = img.copy() # don't clobber original
+    skel = img.copy()
+
+    skel[:,:] = 0
+    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
+
+    while(True):
+        eroded = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
+        temp = cv2.morphologyEx(eroded, cv2.MORPH_DILATE, kernel)
+        temp  = cv2.subtract(img, temp)
+        skel = cv2.bitwise_or(skel, temp)
+        img[:,:] = eroded[:,:]
+        if cv2.countNonZero(img) == 0:
+            break	
+    skel_letter = cv2.medianBlur(skel, 1)
+    kernel = np.ones( (3, 3), np.uint8)
+    close_letter = cv2.morphologyEx(skel_letter, cv2.MORPH_CLOSE, kernel)
+    close_letter = cv2.dilate(close_letter, kernel)
+	
+    return close_letter
+
+def count_fingers(pts_list):
+	fingers_nr = 0
+	global drawing
+	finger_found = False
+	for i in range(2, len(pts_list)):
+		if finger_found is not True:
+			start = pts_list[i-2]
+			peek = pts_list[i-1]
+			end = pts_list[i]
+			angle = get_angle(start, end, peek)
+			if angle < 90:
+				print(angle)
+				cv2.circle(drawing,peek,5,[0,0,255],-1)
+				fingers_nr = fingers_nr + 1
+				finger_found = True
+		else:
+			finger_found = False
+			
+	return fingers_nr
 
 def get_angle(start, end, far):
 	#determinarea unghiului aplicand teorema lui cosinus
@@ -20,72 +346,107 @@ def get_angle(start, end, far):
 	#conversie din radiani in grade
 	return ( (angle*180.0)/math.pi )
 	
-	
-mypath = 'E:\\Licenta2019\\Sign_Language_translator\\dataset2'
-onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-#backsubmog = cv2.createBackgroundSubtractorMOG2()
-# DETECTIE MANA IN IMAGINE
-
-
-
-for file in onlyfiles:
-	#print(file)
-	img = cv2.imread(mypath + '\\' + file, 1)
-	flipped = cv2.flip(img, 1)
-	height, width, chan = img.shape
-	#print(str(height) + "  " + str(width) )
-	#marginile imaginii nu permit detectarea corecta a mainii, de asta facem crop la imagine
-	crop_img = img[5:height-15, 5:width-15]
-	#thresh1 = backsubmog.apply(gray)
-	
-	blue, green, red = cv2.split(img)
-
-	gray = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-
-	blur = cv2.GaussianBlur(gray,(3,3),0)
-	ret,thresh1 = cv2.threshold(blue,70,255,cv2.THRESH_BINARY_INV)
-
-	_, contours, hierarchy = cv2.findContours(thresh1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-	drawing = np.zeros(img.shape, np.uint8)
-
-	max_area = 0.0
-	ci = 0
-
-	for i in range (len(contours)):
-		cnt = contours[i]
-		area = cv2.contourArea(cnt)
-		if (area > max_area):
-			max_area = area
-			ci = i		
-
-	cnt = contours[ci]
-	cv2.drawContours(drawing, [cnt], 0, (0,255,0),2)
-	#cnt = cv2.approxPolyDP(cnt, 0.01*cv2.arcLength(cnt, True), True)
+def get_convexity_def(cnt):
+	global conv_def
+	epsilon = 0.005*cv2.arcLength(cnt, True)
+	approx = cv2.approxPolyDP(cnt, epsilon, True)
+	cv2.drawContours(drawing, [approx], 0, (0,255,0),2)
+	hull = cv2.convexHull(cnt)
+	cv2.drawContours(drawing, [hull], 0, (255,0,0),2)
 	hull = cv2.convexHull(cnt, returnPoints = False)
 	defects = cv2.convexityDefects(cnt, hull)
 	
-	print(file)
 	for i in range(defects.shape[0]):
 		s,e,f,d = defects[i,0]
 		start = tuple(cnt[s][0])
 		end = tuple (cnt[e][0])
 		far = tuple (cnt[f][0])
-		cv2.line(drawing, start, end, [255,0,0],2)
-		cv2.circle(drawing,far,5,[0,0,255],-1)
-		angle = get_angle(start, end, far)
-		print('distance = ' + str(d))
-		
-	print('Numarul defectelor de convexitate = {}'.format(nr_convex_def))
-	print('Adancimea defectelor de convexitate')
-	print(convex_def_depth)
-	print('Numarul degetelor = {}'.format(nr_fingers))
+		if d > 3000:
+			features.append(d)
 	
-	nr_fingers = 0
-	nr_convex_def = 0
-	convex_def_depth.clear()
-	cv2.imshow(file + 'contours', drawing)
+def get_points(cnt):
+	points = list()
+	epsilon = 0.005*cv2.arcLength(cnt, True)
+	approx = cv2.approxPolyDP(cnt, epsilon, True)
+	#cv2.drawContours(drawing, [approx], 0, (0,255,0),2)
+	hull = cv2.convexHull(cnt)
+	#cv2.drawContours(drawing, [hull], 0, (255,0,0),2)
+	hull = cv2.convexHull(cnt, returnPoints = False)
+	defects = cv2.convexityDefects(cnt, hull)
 	
+	for i in range(defects.shape[0]):
+		s,e,f,d = defects[i,0]
+		start = tuple(cnt[s][0])
+		end = tuple (cnt[e][0])
+		far = tuple (cnt[f][0])
+		if i == 0:
+			points.append(start)
+		if d > 3000:
+			points.append(far)
+		points.append(end)	
+	return points
 
+def get_all_files(path):
+    listOfFile = listdir(path)
+    allFiles = list()
+    # Iterate over all the entries
+    for entry in listOfFile:
+        # Create full path
+        fullPath = os.path.join(path, entry)
+        # If entry is a directory then get the list of files in this directory 
+        if os.path.isdir(fullPath):
+            allFiles = allFiles + get_all_files(fullPath)
+        else:
+            allFiles.append(fullPath)
+                
+    return allFiles	
+
+mypath ='E:\\Licenta2019\\Sign_Language_translator\\train_dataset'
+
+onlyfiles = get_all_files(mypath)
+# DETECTIE MANA IN IMAGINE
+
+train_data = open("train_data.csv", "w")
+train_data.close()
+
+test_data = open("test_data.csv", "w")
+test_data.close()
+
+for file in onlyfiles:
+	
+	idx = idx + 1
+	splitted_file = file.split("\\")
+	label = splitted_file[len(splitted_file)-1][0]
+	img = cv2.imread(file, 1)
+	height, width, chan = img.shape
+	crop_img = img[5:height-15, 5:width-15]
+	
+	thresh1 = cv2.inRange(crop_img, np.array([0,0,0]), np.array([63,63,63]) )	
+	drawing = np.zeros(thresh1.shape, np.uint8)	
+	key_point_draw = np.zeros(thresh1.shape, np.uint8)	
+	cnt = get_max_contour(thresh1)
+	cv2.drawContours(drawing, [cnt], 0, (255,255,255), -1)
+
+
+	kernel = np.ones( (5, 5), np.uint8)
+	dilated = cv2.dilate(drawing, kernel)	
+	cnt = get_max_contour(dilated)
+	x,y,w,h = cv2.boundingRect(cnt)
+	symbol = dilated[y : y + h, x : x + w]
+	symbol = cv2.resize(symbol, (75,100))
+	#cv2.imshow(file, symbol)
+	cnt = get_max_contour(symbol)
+	key_points = get_key_points(cnt)
+	key_points = adjust_key_pts(key_points, cnt)
+	
+	center = compute_center(cnt)
+	
+	key_points = create_feature_array(key_points, center)
+	
+	write_to_csv(label)
+	# for x in range(len(key_points)):
+		# cv2.circle(key_point_draw, tuple(key_points[x]), 2, (255,0,0), -1 )
+	# cv2.imshow(file+"fsafsa", key_point_draw)	
+	
 cv2.waitKey(0)
 
