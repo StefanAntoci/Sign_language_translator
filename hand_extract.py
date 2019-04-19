@@ -7,14 +7,21 @@ import csv
 import os
 import random
 
+key_points = list()
+key_points2 = list()
+key_points3 = list()
+
+rev_key_points = list()
+rev_key_points2 = list()
+rev_key_points3 = list()
+
 key_points_number = 20
 dists = list()
 slopes =list()
 conv_def = list()
 idx = 0
 
-def write_to_csv(label):
-    global key_points
+def write_to_csv(label, key_points):    
     global idx
     #x =random.randint(0, 20)
     if idx % 50 == 0:
@@ -26,7 +33,9 @@ def write_to_csv(label):
         test_data.write(label)
         test_data.write("\n")
         test_data.close()
-        key_points.clear()        
+        key_points.clear()
+        
+       
     else:
         for data in key_points:
             train_data = open("train_data.csv", "a")
@@ -36,8 +45,9 @@ def write_to_csv(label):
         train_data.write(label)
         train_data.write("\n")
         train_data.close()
-        key_points.clear()    
+        key_points.clear()
 
+        
 def create_feature_array(key_points, ref_point):
     for x in range(len(key_points)):
         key_points[x] = calculate_distance(key_points[x], ref_point)
@@ -127,11 +137,9 @@ def delete_key_points(key_points, points_nr):
     return key_points
 
 def add_key_points(key_points, points_nr, cnt):
-    #print(key_points)
     pts_dist = dict()
     aux = list()
     for x in range(points_nr):
-        #print("x = " + str(x))
         aux = key_points.copy()
         for i in range(len(key_points)):
             if i == len(key_points)-1:
@@ -423,119 +431,169 @@ def get_mask(image):
                 mask[x,y] = 255            
     return mask
 
+def get_hand_contour(img):  
+    cnt = get_max_contour(img)  
+    drawing = np.zeros(img.shape, np.uint8)
+    cv2.drawContours(drawing, [cnt], 0, (255, 255, 255), -1)
+    return drawing
+
+def adjust_hand_contour(drawing):
+    cnt = get_max_contour(drawing)
+    x,y,w,h = cv2.boundingRect(cnt)
+    symbol = drawing[y : y + h, x : x + w] 
+    scale = float(w) / float(h)
+    if scale <= 0.8:
+        symbol = cv2.resize(symbol, (90, 160))
+    elif scale >= 1.2:
+        symbol = cv2.resize(symbol, (150, 96))
+    else:
+        symbol = cv2.resize(symbol, (120, 120))
+
+    symbol = cv2.medianBlur(symbol, 5)
+    return symbol
+    
 def hand_extraction(img):
     cnt = get_max_contour(img)
     drawing = np.zeros(img.shape, np.uint8)
     cv2.drawContours(drawing, [cnt], 0, (255, 255, 255), -1)
     cnt = get_max_contour(drawing)
     x,y,w,h = cv2.boundingRect(cnt)
-    symbol = drawing[y : y + h, x : x + w]
-    symbol = cv2.resize (symbol,(75,100) )
+    symbol = drawing[y : y+h , x : x + w]
+    scale = float(w) / float(h)
+    
+    if scale <= 0.8:
+        symbol = cv2.resize(symbol, (90, 160))
+    elif scale >= 1.2:
+        symbol = cv2.resize(symbol, (150, 96))
+    else:
+        symbol = cv2.resize(symbol, (120, 120))
+    symbol = cv2.medianBlur(symbol, 5)
     return symbol, cnt
     
 def features_calculation(img):
     cnt = get_max_contour(img)
-    key_points = get_key_points(cnt)
-    key_points = adjust_key_pts(key_points, cnt)
-    center = compute_center(cnt)
-    key_points = create_feature_array(key_points, center)
-    return key_points
-    
-    
-# mypath ='E:\\Licenta2019\\Sign_Language_translator\\dataset2'
+    if len(cnt) >= 20:
+        key_points = get_key_points(cnt)
+        key_points = adjust_key_pts(key_points, cnt)
+        img_with_pts =  np.zeros(img.shape, np.uint8)
+        center = compute_center(cnt)
+        key_points = create_feature_array(key_points, center)
+        return key_points
+    else:
+        key_points = list()
+        key_points.append(0)
+        return key_points
 
-# onlyfiles = get_all_files(mypath)
-# # DETECTIE MANA IN IMAGINE
+def rotate_image(img):
+    h, w = img.shape
+    center = (h/2, w/2 )
+    angle = random.randint(0, 5)
+    rot_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    symbol = cv2.warpAffine( img, rot_matrix, img.shape )
+    return symbol
 
-# # train_data = open("train_data.csv", "w")
-# # train_data.close()
+def get_train_data():
+    global idx
+    global key_points
+    global key_points2
+    global key_points3 
+    mypath ='E:\\Licenta2019\\Sign_Language_translator\\train_dataset'
 
-# # test_data = open("test_data.csv", "w")
-# # test_data.close()
+    onlyfiles = get_all_files(mypath)
+    #DETECTIE MANA IN IMAGINE
 
-# for file in onlyfiles:
-    # last_slash_pos = file.rfind("\\")
-    # img_name = file[last_slash_pos+1:]
-    # print(img_name)
-    # idx = idx + 1
-    # splitted_file = file.split("\\")
-    # label = splitted_file[len(splitted_file)-1][0]
-    # img = cv2.imread(file, 1)
-    # height, width, chan = img.shape
-    # crop_img = img[5:height-15, 5:width-15]    
-    # hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
-    # gray_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
-    
-    # thresh1 = cv2.inRange(crop_img, np.array([50,0,0]), np.array([100,255,255]) )
-    # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\after_thresh2\\'+img_name+'.jpg', thresh1)    
-    # hsv_thresh  = cv2.inRange(hsv_img, np.array([0,100,40]), np.array([255,220,80]) )
-    # hsv_thresh2 = cv2.inRange(hsv_img, np.array([85,75,0]), np.array([255,255,255]) )
-    # hsv_thresh3 = cv2.inRange(hsv_img, np.array([100,0,80]), np.array([180,105,100]) )    
-    
-    # gray_thresh = cv2.inRange(gray_img, np.array([20]), np.array([55]) )    
-    
-    
-    # after_and = cv2.bitwise_or(hsv_thresh, hsv_thresh2)
-    # after_and = cv2.bitwise_or(after_and, hsv_thresh3)
+    train_data = open("train_data.csv", "w")
+    train_data.close()
 
-    # #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\hsv_img\\'+img_name+'.jpg', hsv_thresh)
-    # #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\hsv_img2\\'+img_name+'.jpg',hsv_thresh2)
-    # #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\hsv_img3\\'+img_name+'.jpg',hsv_thresh3)    
-    # #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\grayscale\\'+img_name+'.jpg',gray_thresh)
-    
-    # #mask = get_mask(thresh1)
-    
-    # # thresh1 = cv2.bitwise_and(thresh1, mask)
-    # # if idx == 1:
-        # # cv2.imwrite('mask.jpg', mask)
-    
+    test_data = open("test_data.csv", "w")
+    test_data.close()
 
-    # # kernel_1 = np.ones( (9, 9), np.uint8)
-    # # kernel_2 = np.ones( (5, 5), np.uint8)
-    # # kernel_3 = np.ones( (5, 5), np.uint8)    
-    # # median = cv2.medianBlur(after_and, 11)
 
-    # # eroded = cv2.erode(median, kernel_2)
-    # # dilated = cv2.dilate(eroded, kernel_1)
-    # # eroded = cv2.erode(dilated, kernel_2)    
-    # # dilated = cv2.dilate(eroded, kernel_1)    
-    # # eroded = cv2.erode(dilated, kernel_2)    
-    # #closing = cv2.morphologyEx(eroded, cv2.MORPH_CLOSE, kernel_3)
-    # #cv2.imshow(img_name, eroded)
-    
-    # #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\hsv_img2\\'+img_name+'.jpg',eroded)    
-    
-    
-    
-    #      
-    # key_point_draw = np.zeros(thresh1.shape, np.uint8)    
-    # cnt = get_max_contour(thresh1)
-    # cv2.drawContours(drawing, [cnt], 0, (255,255,255), -1)
-    # kernel = np.ones( (5, 5), np.uint8)
-    # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'.jpg', drawing)    
-    
-    # # cnt = get_max_contour(drawing)
-    # # x,y,w,h = cv2.boundingRect(cnt)
-    # # symbol = drawing[y : y + h, x : x + w]
-    # # symbol = cv2.resize(symbol, (75,100))
-    # # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images\\'+img_name+'.jpg', symbol)        
-    
-    # # cnt = get_max_contour(symbol)
-    # # key_points = get_key_points(cnt)
-    # # key_points = adjust_key_pts(key_points, cnt)
-    
-    # # center = compute_center(cnt)
-    
-    # # img_with_pts = np.zeros(symbol.shape, np.uint8)
-    # # for x in key_points:
-        # # cv2.circle(img_with_pts, tuple(x), 1, (255,255,255))
-    
-    # # key_points = create_feature_array(key_points, center)
 
+    for file in onlyfiles:
+        last_slash_pos = file.rfind("\\")
+        img_name = file[last_slash_pos+1:len(file)-4]
+        print(img_name)
+        idx = idx + 1
+        splitted_file = file.split("\\")
+        label = splitted_file[len(splitted_file)-1][0]
+        img = cv2.imread(file, 1)
+        height, width, chan = img.shape
+        crop_img = img[5:height-15, 5:width-15]    
+        hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+        gray_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+        
+        thresh1 = cv2.inRange(crop_img, np.array([0,0,0]), np.array([63,80,90]) ) 
+        mask=get_mask(thresh1)
+        
+        thresh1 = cv2.bitwise_and(thresh1, mask)
+        kernel1 = np.ones( (5, 5), np.uint8 )
+        kernel2 = np.ones( (3, 3), np.uint8 )
+        
+        thresh1 = cv2.dilate(thresh1, kernel1)
+        thresh1 = cv2.erode(thresh1, kernel2)
+        thresh1 = cv2.dilate(thresh1, kernel1)
+        thresh1 = cv2.erode(thresh1, kernel2)
+        thresh1 = cv2.dilate(thresh1, kernel1)
+        thresh1 = cv2.erode(thresh1, kernel2)
+        
+        kernel_1 = np.ones( (3, 3) , np.uint8 )
+        kernel_2 = np.ones( (5, 5) , np.uint8 )
+        thresh2 = cv2.dilate(thresh1, kernel_1)
+        thresh3 = cv2.dilate(thresh1, kernel_2)
+
+        thresh1 = get_hand_contour(thresh1)
+        thresh2 = get_hand_contour(thresh2)
+        thresh3 = get_hand_contour(thresh3)    
+        
+        thresh1 = rotate_image(thresh1)
+        thresh2 = rotate_image(thresh2)
+        thresh3 = rotate_image(thresh3)
+      
+        
+        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'.jpg',thresh1) 
+        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'_2.jpg',thresh2) 
+        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'_3.jpg',thresh3)       
+        
+        symbols = list()
+        
+        symbols.append(adjust_hand_contour(thresh1) )
+        symbols.append(adjust_hand_contour(thresh2) )
+        symbols.append(adjust_hand_contour(thresh3) )
+        
+        
+        img_with_pts = np.zeros(symbols[0].shape, np.uint8)
+        
+        
+        for i in range(len(symbols)):
+            cnt = get_max_contour(symbols[i])
+            img_with_pts = np.zeros(symbols[0].shape, np.uint8)
+            if len(cnt) > 20:
+                key_points = get_key_points(cnt)
+                key_points = adjust_key_pts(key_points, cnt) 
+                key_points_length = len(key_points) 
+                center = compute_center(cnt)
+                for x in range(len(key_points)):
+                    cv2.circle(img_with_pts, tuple(key_points[x]), 1, (255,255,255))
+                if i == 0:    
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'.jpg',img_with_pts)
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'.jpg',symbols[i])
+                elif i == 1:
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'a2.jpg',img_with_pts)
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'a2.jpg',symbols[i])
+                elif i == 2:
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'a3.jpg',img_with_pts)
+                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'a3.jpg',symbols[i]) 
+                key_points = create_feature_array(key_points, center)
+                write_to_csv(label, key_points)
+        
+def delete_noize(frames):
+    result = cv2.bitwise_and(frames[0], frames[1])
+    for i in range(2, len(frames)):
+        result = cv2.bitwise_and(result, frames[i])
+    return result
+
+#get_train_data()
     
-    # # #write_to_csv(label)
-    
-    # # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'.jpg', img_with_pts)
-    
-# cv2.waitKey(0)
+#cv2.waitKey(0)
 
