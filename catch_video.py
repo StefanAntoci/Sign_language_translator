@@ -53,7 +53,6 @@ def hand_histogram(frame):
     return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
 def hist_masking(frame, hist):
-
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     dst = cv2.calcBackProject([hsv], [0, 1], hist, [0, 180, 0, 256], 1)
     disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
@@ -94,14 +93,39 @@ def get_most_popular_letter(letters):
                 break
         if letter_found == False:
             letters_app[letters[i]] = 1
-            
+    
+    letters = list(letters_app.keys())
+    appearances = list(letters_app.values())
+
     letter = list(letters_app.keys())[0]
     appearances = list(letters_app.values())[0]
     for key, value in letters_app.items():
         if value > appearances:
             letter = key
     print(letters_app)            
-    return letter
+    return letter    
+    # if len(letters) == 1:
+        # return letters[0]
+    
+    # letter1 = letters[0]
+    # letter2 = letters[1]
+    # app1 = appearances[0]
+    # app2 = appearances[1]
+    
+    # for x in range(2, len(letters)):
+        # if letters_app[letters[x]] > app1:
+            # app2 = app1
+            # app1 = letters_app[letters[x]]
+            # letter2 = letter1
+            # letter1 = letters[x]
+        # elif letters_app[letters[x]] > app2 and letters_app[letters[x]] < app1:
+            # app2 = letters_app[letters[x]]
+            # letter2 = letters[x]
+    
+    # if app2 - app1 >= 2:
+        # return letter1
+    # else:
+        # return '-'
     
 def capture_video():
     with tf.Session() as sess:
@@ -111,6 +135,7 @@ def capture_video():
         graph = load_model(sess, 'E:\Licenta2019\Sign_Language_translator\\model.ckpt.meta', 'E:\Licenta2019\Sign_Language_translator')
         letters = list()
         frames = list()
+        word = ""
         while(True):
             ret, frame = cap.read()
             frame = draw_rect(frame)
@@ -124,25 +149,32 @@ def capture_video():
             else:
                 filtered_contour = he.delete_noize(frames)
                 symbol = he.adjust_hand_contour(filtered_contour)
-                cv2.imshow("symbol", symbol)
                 frames.clear()
                 y = 0
-                
-                key_points = he.features_calculation(symbol)
-                if len(key_points) > 1:
-                    key_points = np.asarray(key_points)
-                    key_points = key_points.reshape(1,40)           
-                    predictions = predict(graph, sess, key_points)
-                    predictions_dev = np.std(predictions)
-                    letter = nn.prob_to_letter(predictions[0])
-                    if x < 5:
-                        letters.append(letter)
-                        x = x + 1
-                    else:
-                        letter = get_most_popular_letter(letters)
-                        letters.clear()
-                        x = 0
-                        print(letter)
+                if len(symbol) != 0:
+                    cv2.imshow("symbol", symbol)
+                    key_points = he.features_calculation(symbol)
+                    if len(key_points) > 1:
+                        areas = he.get_4areas(symbol)
+                        for j in range(len(areas)):
+                            key_points.append(areas[j])
+                        key_points = np.asarray(key_points)
+                        key_points = key_points.reshape(1,44)
+                        predictions = predict(graph, sess, key_points)
+                        predictions_dev = np.std(predictions)
+                        letter = nn.prob_to_letter(predictions[0])
+                        if x < 5:
+                            letters.append(letter)
+                            x = x + 1
+                        else:
+                            letter = get_most_popular_letter(letters)
+                            print(letter)
+                            # if letter != '-':
+                                # word = word + letter
+                                # print("word = " + word)
+                                # print(letter)    
+                            letters.clear()
+                            x = 0                        
             cv2.imshow("Capturing", frame)
             key = cv2.waitKey(1)
             if key == ord('q'):
@@ -160,10 +192,12 @@ def capture_video_conv():
         frames = list()
         while(True):
             ret, frame = cap.read()
-            frame = cv2.resize(frame, (200, 200) )
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frame = np.expand_dims(frame, axis = 2)
-            frames.append(frame)
+            frame = draw_rect(frame)
+            hist = hand_histogram(frame)
+            prob_img, img = hist_masking(frame, hist)
+            cv2.imshow("Img", img)
+            img = cv2.resize( img, (200,200) )
+            frames.append(img)
             prediction = predict_conv(graph, sess, frames)
             print(prediction)
             frames.clear()
@@ -186,18 +220,18 @@ def capture_video_conv():
 
 def create_own_dataset():
     cap = cv2.VideoCapture(0)
-    x = 0
-    while(x < 1000):
+    x = 2000
+    while(x < 3400):
         ret, frame = cap.read()
         frame = draw_rect(frame)
         hist = hand_histogram(frame)
         prob_img, img = hist_masking(frame, hist)
         cv2.imshow("capturing", img)
         key = cv2.waitKey(1)
-        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myDataset\\C\\'+'C'+str(x)+'.jpg', img)
+        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myDataset\\K3\\'+'K'+str(x)+'.jpg', img)
         x = x + 1
         print(x)
     cap.release()
-    
+
 capture_video()
 #create_own_dataset()

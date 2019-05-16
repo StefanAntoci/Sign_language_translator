@@ -18,7 +18,7 @@ train_data = list()
 des_out = list()
 test_data = list()
 des_out_test = list()
-images_path = 'E:\\Licenta2019\\Sign_Language_translator\\binary_images2'
+images_path = 'E:\\Licenta2019\\Sign_Language_translator\\conv_dataset2'
 folder_name = 'E:/test/log_at_{}'.format(int(time.time()))
 conv_folder_name = 'E:/conv/log_at_{}'.format(int(time.time()))
 imgs = list()
@@ -51,10 +51,10 @@ def prob_to_letter_conv(predictions):
 def prob_to_letter(predictions):
     highest_val = 0
     
-    for x in range(1,25):
+    for x in range(1,26):
         if predictions[x] > predictions[highest_val]:
             highest_val = x
-    print(x)        
+        
     if highest_val == 0:
         return 'A'
     elif highest_val == 1:
@@ -105,58 +105,62 @@ def prob_to_letter(predictions):
         return 'M'
     elif highest_val == 24:
         return 'N'        
+    elif highest_val == 25:
+        return 'K' 
         
 def convert_to_prob(letter):
     if letter == ' A':
-        return [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' B':
-        return [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' C':
-        return [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' D':
-        return [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' F':
-        return [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' G':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' I':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' P':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]        
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]        
     elif letter == ' V':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' W':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter == ' Y':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter ==  ' J':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter ==  ' L':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter ==  ' O':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     elif letter ==  ' Q':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' E':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' H':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' R':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' S':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' T':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' U':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' X':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' Z':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0] 
     elif letter ==  ' M':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0] 
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0] 
     elif letter ==  ' N':
-        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]         
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]         
+    elif letter ==  ' K':
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0] 
 
 def convert_to_prob_conv(letter):
         if letter == 'A':
@@ -271,53 +275,7 @@ def get_conv_output(train_images):
                                 
                 summary = sess.run(merged, feed_dict = trainData)                                
                 writer.add_summary(summary, j)
-
-def define_and_run_conv_net_keras(train_images, test_images):
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
-    global imgWidth
-    global imgHeight
-       
-    nrChannels = 1
-    nrClasses = 8
-    learnRate = 0.01
-    
-    data_to_test, des_for_test, _ = prepare_dataset(0, len(test_images), test_images)
-    
-    conv_model = Sequential()
-    conv_model.add(Conv1D(5, kernel_size = 5, activation=tf.nn.relu,kernel_initializer = tf.initializers.variance_scaling(), input_shape = (200, 200, 1) ) )
-    conv_model.add(MaxPool1D(pool_size = 4, strides = 4 ) )
-    conv_model.add(Conv1D(5, kernel_size = 5, activation=tf.nn.relu , kernel_initializer = tf.initializers.variance_scaling(), input_shape = (200, 200, 1) ) )
-    conv_model.add(MaxPool1D(pool_size = 2, strides = 2 ) )
-    conv_model.add(Flatten(input_shape = (22, 5) ) )
-
-    conv_model.add(Dense(100, activation = tf.nn.sigmoid, kernel_initializer = tf.initializers.glorot_uniform() )) 
-    conv_model.add(Dense(nrClasses, activation = tf.nn.sigmoid, kernel_initializer = tf.initializers.glorot_uniform() ))     
-    conv_model.summary()
-    conv_model.add(Softmax() )
-
-    
-    conv_model.compile(optimizer = tf.train.AdamOptimizer(), loss = 'mean_squared_error', metrics = ['accuracy'] )
- 
-    nrEpochs = int(len(train_images) / int(100) )
-    
-    
-    nrRepetitions = 2
-       
-    for j in range(len(train_images)-1):
-        data_to_train, des_for_train, _ = prepare_dataset(j, j + 1, train_images)
-        
-        print(type(data_to_train))
-        data_to_train_list = list()
-        des_for_train_list = list()
-        data_to_train_list.append(data_to_train)
-        des_for_train_list.append(des_for_train)
-        conv_model.fit(data_to_train[0], des_for_train[0])
-        
-        if (j % 25) == 0:
-            test_loss, test_acc = conv_model.evaluate(data_to_test, des_for_test)
-            print(j)
-            print('loss = ' + str(test_loss))
-            print(' acc = ' + str(test_acc))                
+              
                 
 def define_and_run_conv_net(train_images, test_images):
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
@@ -372,8 +330,7 @@ def define_and_run_conv_net(train_images, test_images):
         sess.run( tf.global_variables_initializer() )
             
         for i in range(nrRepetitions):
-            for j in range(nrEpochs):
-                #print(j)            
+            for j in range(nrEpochs):            
                 if  j != 0 and j % (nrEpochs - 1) == 0:
                     data_to_train, des_for_train, _ = prepare_dataset(j*100, len(train_images), train_images)
                 else:
@@ -405,20 +362,20 @@ def define_and_run_neural_net(train_mean, train_stddev):
     global des_out_test
     
 
-    inLayerSize = 40
-    hiddenLayerSize1 = 80    
-    hiddenLayerSize2 = 120    
-    outLayerSize = 25
+    inLayerSize = 44
+    hiddenLayerSize1 = 88    
+    hiddenLayerSize2 = 132    
+    outLayerSize = 26
 
     inPH = tf.placeholder(tf.float32, [None, inLayerSize], name = "inPH" )
     desOutPH = tf.placeholder(tf.float32, [None, outLayerSize], name = "desOutPH" )
     keep_prob = tf.placeholder(tf.float32)
     
-    weights1 = tf.get_variable("weights1", [inLayerSize,hiddenLayerSize1], initializer=tf.contrib.layers.variance_scaling_initializer() )
+    weights1 = tf.get_variable("weights1", [inLayerSize,hiddenLayerSize1] )
     biases1 = tf.Variable(0.5, dtype = tf.float32, name="biases1")    
-    weights2 = tf.get_variable("weights2", [hiddenLayerSize1, hiddenLayerSize2], initializer=tf.contrib.layers.variance_scaling_initializer() )
+    weights2 = tf.get_variable("weights2", [hiddenLayerSize1, hiddenLayerSize2])
     biases2 = tf.Variable(0.5, dtype = tf.float32, name = "biases2")
-    weights3 = tf.get_variable("weights3", [hiddenLayerSize2, outLayerSize], initializer=tf.contrib.layers.variance_scaling_initializer() )    
+    weights3 = tf.get_variable("weights3", [hiddenLayerSize2, outLayerSize])    
     biases3 = tf.Variable(0.5, dtype = tf.float32, name = "biases3")
 
     normalized = tf.nn.batch_normalization(inPH,train_mean, train_stddev,0.0, 1.0, 0.0, name = "normalized")
@@ -538,20 +495,20 @@ def predict_symbol(saver, key_points):
     # data = list(csv_reader)
 # for i in range(len(data)):
     # del data[i][-1]
-    # if len(data[i]) != 40:
+    # if len(data[i]) != 44:
         # print(i)
         # print(len(data[i]))
 
     
-# train_images, test_images = get_images(images_path)
-# define_and_run_conv_net(train_images, test_images)
+#train_images, test_images = get_images(images_path)
+#define_and_run_conv_net(train_images, test_images)
  
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  
                 
 # read_from_csv("train_data.csv", train_data, des_out)
-# print("reading train data finito")
+# print("read from train")
 # read_from_csv("test_data.csv", test_data, des_out_test)
-# print("reading test data finito")
+# print("read from test")
 # train_mean = np.mean(train_data)
 # train_std = np.std(train_data)
 # print(train_mean)
