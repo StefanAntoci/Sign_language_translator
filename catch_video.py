@@ -2,6 +2,7 @@ import cv2
 import tensorflow as tf
 import numpy as np
 import time
+import sys
 import hand_extract as he 
 import neural_network as nn  
 total_rectangle = 9
@@ -11,7 +12,25 @@ hand_rect_one_y = 0
 hand_rect_two_x = 0
 hand_rect_two_y = 0
 
-def draw_rect(frame):
+
+def get_more_files():
+    folder_name = 'E:\\Licenta2019\\Sign_Language_translator\\video_records3'
+    files = he.get_all_files(folder_name)
+    
+    for file in files:
+        #print(file)
+        splt = file.split('\\')
+        new_name = splt[len(splt)-1]+'_'+splt[len(splt)-2]+'.jpg'
+        save_folder = 'MoreData'  
+        oframe = cv2.imread(file, 1)    
+        frame = draw_rect(oframe, False)
+        hist = hand_histogram(frame)
+        _, img = hist_masking(frame, hist)
+        print(folder_name+'\\'+save_folder+'\\'+new_name)
+        cv2.imwrite(folder_name+'\\'+save_folder+'\\'+new_name, img)
+        
+
+def draw_rect(frame, real_time):
     rows, cols, _ = frame.shape
     global total_rectangle, hand_rect_one_x, hand_rect_one_y, hand_rect_two_x, hand_rect_two_y
 
@@ -26,16 +45,16 @@ def draw_rect(frame):
     hand_rect_two_x = hand_rect_one_x + 10
     hand_rect_two_y = hand_rect_one_y + 10
 
-    big_rect_x1 = hand_rect_one_y[0] - 70
-    big_rect_x2 = hand_rect_one_y[2] + 70
-    big_rect_y1 = hand_rect_one_x[0] - 110
-    big_rect_y2 = hand_rect_one_x[6] + 110
+    #big_rect_x1 = hand_rect_one_y[0] - 70
+    #big_rect_x2 = hand_rect_one_y[2] + 70
+    #big_rect_y1 = hand_rect_one_x[0] - 110
+    #big_rect_y2 = hand_rect_one_x[6] + 110
     
-    for i in range(total_rectangle):
-        cv2.rectangle(frame, (hand_rect_one_y[i], hand_rect_one_x[i]),
-                      (hand_rect_two_y[i], hand_rect_two_x[i]),
-                      (0, 255, 0), 1)
-    #cv2.rectangle(frame, (big_rect_x1, big_rect_y1), (big_rect_x2, big_rect_y2), (0,255,0), 1)                  
+    if real_time is True:
+        for i in range(total_rectangle):
+            cv2.rectangle(frame, (hand_rect_one_y[i], hand_rect_one_x[i]),
+                          (hand_rect_two_y[i], hand_rect_two_x[i]),
+                          (0, 255, 0), 1)                  
 
     return frame
 
@@ -94,54 +113,71 @@ def get_most_popular_letter(letters):
         if letter_found == False:
             letters_app[letters[i]] = 1
     
+    print(letters_app)
     letters = list(letters_app.keys())
     appearances = list(letters_app.values())
 
-    letter = list(letters_app.keys())[0]
-    appearances = list(letters_app.values())[0]
-    for key, value in letters_app.items():
-        if value > appearances:
-            letter = key
-    print(letters_app)            
-    return letter    
-    # if len(letters) == 1:
-        # return letters[0]
+    # letter = list(letters_app.keys())[0]
+    # appearances = list(letters_app.values())[0]
+    # for key, value in letters_app.items():
+        # if value > appearances:
+            # letter = key
+               
+    # return letter
     
-    # letter1 = letters[0]
-    # letter2 = letters[1]
-    # app1 = appearances[0]
-    # app2 = appearances[1]
+    if len(letters) == 1:
+        return letters[0]
     
-    # for x in range(2, len(letters)):
-        # if letters_app[letters[x]] > app1:
-            # app2 = app1
-            # app1 = letters_app[letters[x]]
-            # letter2 = letter1
-            # letter1 = letters[x]
-        # elif letters_app[letters[x]] > app2 and letters_app[letters[x]] < app1:
-            # app2 = letters_app[letters[x]]
-            # letter2 = letters[x]
+    letter1 = letters[0]
+    letter2 = letters[1]
+    app1 = appearances[0]
+    app2 = appearances[1]
     
-    # if app2 - app1 >= 2:
-        # return letter1
-    # else:
-        # return '-'
+    if app2 > app1:
+        temp = letter2
+        letter2 = letter1
+        letter1 = temp
+        temp = app2
+        app2 = app1
+        app1 = temp
+    
+    for x in range(2, len(letters)):
+        if letters_app[letters[x]] > app1:
+            app2 = app1
+            app1 = letters_app[letters[x]]
+            letter2 = letter1
+            letter1 = letters[x]
+        elif letters_app[letters[x]] > app2 and letters_app[letters[x]] < app1:
+            app2 = letters_app[letters[x]]
+            letter2 = letters[x]
+    
+    if app1 - app2 >= 2:
+        return letter1
+    else:
+        return ''
     
 def capture_video():
+    file_name = 0
+    real_time = True
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
+        real_time = False
     with tf.Session() as sess:
-        cap = cv2.VideoCapture(0)    
+        cap = cv2.VideoCapture(file_name)    
         x = 0
         y = 0
         graph = load_model(sess, 'E:\Licenta2019\Sign_Language_translator\\model.ckpt.meta', 'E:\Licenta2019\Sign_Language_translator')
         letters = list()
         frames = list()
         word = ""
-        while(True):
+        letter = ""
+        while(True):           
             ret, frame = cap.read()
-            frame = draw_rect(frame)
+            frame = draw_rect(frame, real_time)
+            if type(frame) is None:
+                break
             hist = hand_histogram(frame)
             prob_img, img = hist_masking(frame, hist)
-            cv2.imshow("img", img)
             contour  = he.get_hand_contour(prob_img)
             if y < 5:
                 frames.append(contour)
@@ -154,8 +190,8 @@ def capture_video():
                 if len(symbol) != 0:
                     cv2.imshow("symbol", symbol)
                     key_points = he.features_calculation(symbol)
-                    if len(key_points) > 1:
-                        areas = he.get_4areas(symbol)
+                    areas = he.get_4areas(symbol)
+                    if len(key_points) > 1 and len(areas) > 1:
                         for j in range(len(areas)):
                             key_points.append(areas[j])
                         key_points = np.asarray(key_points)
@@ -167,14 +203,12 @@ def capture_video():
                             letters.append(letter)
                             x = x + 1
                         else:
-                            letter = get_most_popular_letter(letters)
-                            print(letter)
-                            # if letter != '-':
-                                # word = word + letter
-                                # print("word = " + word)
-                                # print(letter)    
+                            letter = get_most_popular_letter(letters)  
                             letters.clear()
-                            x = 0                        
+                            x = 0                                    
+            print(letter)
+            cv2.putText(img, letter,(16,450), cv2.FONT_HERSHEY_SIMPLEX,5, (255,0,0), 2, cv2.LINE_AA )                                                     
+            cv2.imshow("img", img)
             cv2.imshow("Capturing", frame)
             key = cv2.waitKey(1)
             if key == ord('q'):
@@ -183,40 +217,6 @@ def capture_video():
         cap.release()
         cv2.destroyAllWindows()
 
-def capture_video_conv():
-    with tf.Session() as sess:
-        cap = cv2.VideoCapture(0)
-        graph = load_model(sess, 'E:\\Licenta2019\\Sign_Language_translator\\conv_model\\ConvModel.ckpt.meta', 'E:\\Licenta2019\\Sign_Language_translator\\conv_model')
-        x = 0
-        letters = list()
-        frames = list()
-        while(True):
-            ret, frame = cap.read()
-            frame = draw_rect(frame)
-            hist = hand_histogram(frame)
-            prob_img, img = hist_masking(frame, hist)
-            cv2.imshow("Img", img)
-            img = cv2.resize( img, (200,200) )
-            frames.append(img)
-            prediction = predict_conv(graph, sess, frames)
-            print(prediction)
-            frames.clear()
-            letter = nn.prob_to_letter_conv(prediction[0])
-            # if x < 5:
-                # letters.append(letter)
-                # x = x + 1
-            # else:
-                # letter = get_most_popular_letter(letters)
-                # letters.clear()
-                # x = 0
-            print(letter)
-            cv2.imshow("Capturing", frame)
-            key = cv2.waitKey(1)
-            if key == ord('q'):
-                break
-
-        cap.release()
-        cv2.destroyAllWindows()       
 
 def create_own_dataset():
     cap = cv2.VideoCapture(0)
@@ -233,5 +233,6 @@ def create_own_dataset():
         print(x)
     cap.release()
 
+#get_more_files()    
 capture_video()
 #create_own_dataset()

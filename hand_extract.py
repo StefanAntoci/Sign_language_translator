@@ -235,146 +235,6 @@ def calculate_avg(data):
     avg_value = total_sum / float(len(data))
     return avg_value
 
-def get_line_length_slope2(img, file):
-    global features
-    global dists
-    global slopes
-    key_lines = np.zeros( (img.shape[0], img.shape[1]), np.uint8)
-    lines_coords = cv2.HoughLinesP(img, 1, np.pi/180,10 , 1000)
-    if lines_coords is not None:
-        for i in range(0, len(lines_coords)):
-            line = lines_coords[i][0]
-            dist = math.sqrt( (line[2] - line[0]) ** 2 + (line[3] - line[1]) ** 2)
-            if dist > 20:
-                if line[3] == line[1] or line[2] == line[0] or abs(line[3] - line[1]) < 0.001 or abs(line[2] - line[0]) < 0.001:
-                    slope = 0
-                else:    
-                    slope = (line[3] - line[1]) / (line[2] - line[0])
-
-                dists.append(dist)
-                slopes.append(slope)
-                cv2.line(key_lines, (line[0], line[1]), (line[2], line[3]), (255,0,0),2)
-    features.append(len(dists))
-    if len(dists) != 0:
-        features.append(calculate_avg(dists))
-        features.append(calculate_avg(slopes))
-        dists.clear()
-        slopes.clear()
-    else:
-        features.append(0)
-        features.append(0)
-    
-def get_line_length_slope(img, file):
-    global features
-    key_lines = np.zeros( (img.shape[0], img.shape[1]), np.uint8)
-    lines_coords = cv2.HoughLinesP(img, 1, np.pi/180,10 , 1000)
-    if lines_coords is not None:
-        for i in range(0, len(lines_coords)):
-            line = lines_coords[i][0]
-            dist = math.sqrt( (line[2] - line[0]) ** 2 + (line[3] - line[1]) ** 2)
-            if dist > 20:
-                if line[3] == line[1] or line[2] == line[0] or abs(line[3] - line[1]) < 0.001 or abs(line[2] - line[0]) < 0.001:
-                    slope = 0
-                else:    
-                    slope = (line[3] - line[1]) / (line[2] - line[0])
-                #print ("line = " + str(line))
-                #print("slope = " + str(slope))
-                features.append(dist)
-                features.append(slope)
-                cv2.line(key_lines, (line[0], line[1]), (line[2], line[3]), (255,0,0),2)    
-    cv2.imshow(file, key_lines)
-
-def skeletonize(img):
-    img = img.copy() # don't clobber original
-    skel = img.copy()
-
-    skel[:,:] = 0
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
-
-    while(True):
-        eroded = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
-        temp = cv2.morphologyEx(eroded, cv2.MORPH_DILATE, kernel)
-        temp  = cv2.subtract(img, temp)
-        skel = cv2.bitwise_or(skel, temp)
-        img[:,:] = eroded[:,:]
-        if cv2.countNonZero(img) == 0:
-            break    
-    skel_letter = cv2.medianBlur(skel, 1)
-    kernel = np.ones( (3, 3), np.uint8)
-    close_letter = cv2.morphologyEx(skel_letter, cv2.MORPH_CLOSE, kernel)
-    close_letter = cv2.dilate(close_letter, kernel)
-    
-    return close_letter
-
-def count_fingers(pts_list):
-    fingers_nr = 0
-    global drawing
-    finger_found = False
-    for i in range(2, len(pts_list)):
-        if finger_found is not True:
-            start = pts_list[i-2]
-            peek = pts_list[i-1]
-            end = pts_list[i]
-            angle = get_angle(start, end, peek)
-            if angle < 90:
-                print(angle)
-                cv2.circle(drawing,peek,5,[0,0,255],-1)
-                fingers_nr = fingers_nr + 1
-                finger_found = True
-        else:
-            finger_found = False
-            
-    return fingers_nr
-
-def get_angle(start, end, far):
-    #determinarea unghiului aplicand teorema lui cosinus
-    a = math.sqrt( (end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
-    b = math.sqrt( (far[0] - start[0]) ** 2 + (far[1] - start[1]) ** 2)
-    c = math.sqrt( (end[0] -   far[0]) ** 2 + (end[1] -   far[1]) ** 2)
-    angle = math.acos((b ** 2 + c ** 2 - a**2)/ (2 * b * c)    )
-    #conversie din radiani in grade
-    return ( (angle*180.0)/math.pi )
-    
-def get_convexity_def(cnt):
-    global conv_def
-    epsilon = 0.005*cv2.arcLength(cnt, True)
-    approx = cv2.approxPolyDP(cnt, epsilon, True)
-    cv2.drawContours(drawing, [approx], 0, (0,255,0),2)
-    hull = cv2.convexHull(cnt)
-    cv2.drawContours(drawing, [hull], 0, (255,0,0),2)
-    hull = cv2.convexHull(cnt, returnPoints = False)
-    defects = cv2.convexityDefects(cnt, hull)
-    
-    for i in range(defects.shape[0]):
-        s,e,f,d = defects[i,0]
-        start = tuple(cnt[s][0])
-        end = tuple (cnt[e][0])
-        far = tuple (cnt[f][0])
-        if d > 3000:
-            features.append(d)
-    
-def get_points(cnt):
-    points = list()
-    epsilon = 0.005*cv2.arcLength(cnt, True)
-    approx = cv2.approxPolyDP(cnt, epsilon, True)
-    #cv2.drawContours(drawing, [approx], 0, (0,255,0),2)
-    hull = cv2.convexHull(cnt)
-    #cv2.drawContours(drawing, [hull], 0, (255,0,0),2)
-    hull = cv2.convexHull(cnt, returnPoints = False)
-    defects = cv2.convexityDefects(cnt, hull)
-    
-    for i in range(defects.shape[0]):
-        s,e,f,d = defects[i,0]
-        start = tuple(cnt[s][0])
-        end = tuple (cnt[e][0])
-        far = tuple (cnt[f][0])
-        if i == 0:
-            points.append(start)
-        if d > 3000:
-            points.append(far)
-        points.append(end)    
-    return points
-
 def get_all_files(path):
     listOfFile = listdir(path)
     allFiles = list()
@@ -422,53 +282,40 @@ def adjust_hand_contour(drawing):
         return symbol   
     else:
         return list()   
+
 def get_4areas(symbol):
     
-    section_areas = list()
-    cnt = get_max_contour(symbol)
-    all_area = cv2.contourArea(cnt)
-    x,y,w,h = cv2.boundingRect(cnt)
     
-    left_down = symbol[y : int(h/2), x : int(w/2) ]
-    left_down_cnt = get_max_contour(left_down)
-    left_down_area = cv2.contourArea(left_down_cnt)
-    section_areas.append( float(left_down_area) / float(all_area) ) 
-    
-    right_down = symbol[y : int(h/2), int(w/2) : w]
-    right_down_cnt = get_max_contour(right_down)
-    right_down_area = cv2.contourArea(right_down_cnt)
-    section_areas.append( float(right_down_area) / float(all_area) ) 
+    try:
+        section_areas = list()
+        cnt = get_max_contour(symbol)
+        all_area = cv2.contourArea(cnt)
+        x,y,w,h = cv2.boundingRect(cnt)
+        
+        left_down = symbol[y : int(h/2), x : int(w/2) ]
+        left_down_cnt = get_max_contour(left_down)
+        left_down_area = cv2.contourArea(left_down_cnt)
+        section_areas.append( float(left_down_area) / float(all_area) ) 
+        
+        right_down = symbol[y : int(h/2), int(w/2) : w]
+        right_down_cnt = get_max_contour(right_down)
+        right_down_area = cv2.contourArea(right_down_cnt)
+        section_areas.append( float(right_down_area) / float(all_area) ) 
 
-    left_up = symbol[int(h/2) : h, x : int(w/2)]
-    left_up_cnt = get_max_contour(left_up)
-    left_up_area = cv2.contourArea(left_up_cnt)
-    section_areas.append( float(left_up_area) / float(all_area) ) 
+        left_up = symbol[int(h/2) : h, x : int(w/2)]
+        left_up_cnt = get_max_contour(left_up)
+        left_up_area = cv2.contourArea(left_up_cnt)
+        section_areas.append( float(left_up_area) / float(all_area) ) 
 
-    right_up = symbol[int(h/2) : h, int(w/2) : w]
-    right_up_cnt = get_max_contour(right_up)
-    right_up_area = cv2.contourArea(right_up_cnt)
-    section_areas.append( float(right_up_area) / float(all_area) )
-
+        right_up = symbol[int(h/2) : h, int(w/2) : w]
+        right_up_cnt = get_max_contour(right_up)
+        right_up_area = cv2.contourArea(right_up_cnt)
+        section_areas.append( float(right_up_area) / float(all_area) )
+    except TypeError:
+        section_areas = list()
+        section_areas.append(0)
+        
     return section_areas
-    
-    
-def hand_extraction(img):
-    cnt = get_max_contour(img)
-    drawing = np.zeros(img.shape, np.uint8)
-    cv2.drawContours(drawing, [cnt], 0, (255, 255, 255), -1)
-    cnt = get_max_contour(drawing)
-    x,y,w,h = cv2.boundingRect(cnt)
-    symbol = drawing[y : y+h , x : x + w]
-    scale = float(w) / float(h)
-    round(scale, 1)
-    if scale <= 0.8:
-        symbol = cv2.resize(symbol, (90, 160))
-    elif scale >= 1.2:
-        symbol = cv2.resize(symbol, (150, 96))
-    else:
-        symbol = cv2.resize(symbol, (120, 120))
-    symbol = cv2.medianBlur(symbol, 5)
-    return symbol, cnt
     
 def features_calculation(img):
     cnt = get_max_contour(img)
@@ -497,7 +344,7 @@ def get_train_data():
     global key_points
     global key_points2
     global key_points3 
-    mypath ='E:\\Licenta2019\\Sign_Language_translator\\train_dataset\\dataset_A'
+    mypath ='E:\\Licenta2019\\Sign_Language_translator\\video_records3\\MoreData'
 
     onlyfiles = get_all_files(mypath)
     #DETECTIE MANA IN IMAGINE
@@ -523,10 +370,10 @@ def get_train_data():
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
         gray_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
         
-        thresh1 = cv2.inRange(crop_img, np.array([0,0,0]), np.array([63,80,90]) ) 
-        mask=get_mask(thresh1)
+        thresh1 = cv2.inRange(crop_img, np.array([10,10,10]), np.array([255,255,255]) ) 
+        #mask=get_mask(thresh1)
         
-        thresh1 = cv2.bitwise_and(thresh1, mask)
+        #thresh1 = cv2.bitwise_and(thresh1, mask)
         kernel1 = np.ones( (5, 5), np.uint8 )
         kernel2 = np.ones( (3, 3), np.uint8 )
         
@@ -537,12 +384,12 @@ def get_train_data():
         thresh1 = cv2.dilate(thresh1, kernel1)
         thresh1 = cv2.erode(thresh1, kernel2)
         
-        # kernel_1 = np.ones( (3, 3) , np.uint8 )
-        # kernel_2 = np.ones( (5, 5) , np.uint8 )
-        # thresh2 = cv2.dilate(thresh1, kernel_1)
-        # thresh3 = cv2.dilate(thresh1, kernel_2)
+        kernel_1 = np.ones( (3, 3) , np.uint8 )
+        #kernel_2 = np.ones( (5, 5) , np.uint8 )
+        #thresh2 = cv2.dilate(thresh1, kernel_1)
+        #thresh3 = cv2.dilate(thresh1, kernel_2)
 
-        # thresh1 = get_hand_contour(thresh1)
+        thresh1 = get_hand_contour(thresh1)
         # thresh2 = get_hand_contour(thresh2)
         # thresh3 = get_hand_contour(thresh3)    
         
@@ -551,16 +398,18 @@ def get_train_data():
         # thresh3 = rotate_image(thresh3)
       
         
-       # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'.jpg',thresh1) 
-        #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'_2.jpg',thresh2) 
-        #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\binary_images2\\'+img_name+'_3.jpg',thresh3)       
+        #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myRotatedImgs\\'+img_name+'.jpg',thresh1) 
+        #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myRotatedImgs\\'+img_name+'_2.jpg',thresh2) 
+        #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myRotatedImgs\\'+img_name+'_3.jpg',thresh3)       
         
         symbols = list()
         
         symbols.append(adjust_hand_contour(thresh1) )
-        symbols.append(adjust_hand_contour(thresh2) )
-        symbols.append(adjust_hand_contour(thresh3) )
-        
+        cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\video_records3\\symbols_cris\\'+img_name+'.jpg',symbols[0])
+        # symbols.append(adjust_hand_contour(thresh2) )
+        # symbols.append(adjust_hand_contour(thresh3) )
+        # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myAdjusted\\'+img_name+'.jpg',symbols[1])
+        # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myAdjusted\\'+img_name+'.jpg',symbols[2])        
         
         img_with_pts = np.zeros(symbols[0].shape, np.uint8)
         
@@ -571,22 +420,20 @@ def get_train_data():
             if len(cnt) > 40:
                 key_points = get_key_points(cnt)
                 key_points = adjust_key_pts(key_points, cnt) 
-                key_points_length = len(key_points)
-                print(key_points_length)    
+                key_points_length = len(key_points)    
                 center = compute_center(cnt)
                 for x in range(len(key_points)):
-                    cv2.circle(img_with_pts, tuple(key_points[x]), 1, (255,255,255))
-                if i == 0:    
-                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'.jpg',img_with_pts)
-                    #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'.jpg',symbols[i])
-                elif i == 1:
-                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'a2.jpg',img_with_pts)
-                    #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'a2.jpg',symbols[i])
-                elif i == 2:
-                    cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\black_white_images\\'+img_name+'a3.jpg',img_with_pts)
-                    #cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\dilated_binary_images2\\'+img_name+'a3.jpg',symbols[i]) 
+                    cv2.circle(img_with_pts, tuple(key_points[x]), 1, (255,255,255))  
+                cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\video_records3\\points_cris\\'+img_name+'.jpg',img_with_pts)        
+                # if i == 0:    
+                    # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myPoints\\'+img_name+'.jpg',img_with_pts)
+                # elif i == 1:
+                    # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myPoints\\'+img_name+'a2.jpg',img_with_pts)
+                # elif i == 2:
+                    # cv2.imwrite('E:\\Licenta2019\\Sign_Language_translator\\myPoints\\'+img_name+'a3.jpg',img_with_pts)
                 key_points = create_feature_array(key_points, center)
-                write_to_csv(label, key_points)
+                areas = get_4areas(symbols[i])
+                write_to_csv(label, key_points, areas)
         
 def delete_noize(frames):
     result = cv2.bitwise_and(frames[0], frames[1])
@@ -599,11 +446,11 @@ def determine_scale():
     mypath ='E:\\Licenta2019\\Sign_Language_translator\\myDataset\\D2'
     onlyfiles = get_all_files(mypath)        
 
-    #train_data = open("train_data.csv", "w")
-    #train_data.close()
+    train_data = open("train_data.csv", "w")
+    train_data.close()
 
-    #test_data = open("test_data.csv", "w")
-    #test_data.close()
+    test_data = open("test_data.csv", "w")
+    test_data.close()
     
     for file in onlyfiles:
         idx  = idx + 1

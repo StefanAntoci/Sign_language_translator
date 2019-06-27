@@ -371,11 +371,11 @@ def define_and_run_neural_net(train_mean, train_stddev):
     desOutPH = tf.placeholder(tf.float32, [None, outLayerSize], name = "desOutPH" )
     keep_prob = tf.placeholder(tf.float32)
     
-    weights1 = tf.get_variable("weights1", [inLayerSize,hiddenLayerSize1] )
+    weights1 = tf.get_variable("weights1", [inLayerSize,hiddenLayerSize1], initializer=tf.contrib.layers.variance_scaling_initializer() )
     biases1 = tf.Variable(0.5, dtype = tf.float32, name="biases1")    
-    weights2 = tf.get_variable("weights2", [hiddenLayerSize1, hiddenLayerSize2])
+    weights2 = tf.get_variable("weights2", [hiddenLayerSize1, hiddenLayerSize2], initializer=tf.contrib.layers.variance_scaling_initializer() )
     biases2 = tf.Variable(0.5, dtype = tf.float32, name = "biases2")
-    weights3 = tf.get_variable("weights3", [hiddenLayerSize2, outLayerSize])    
+    weights3 = tf.get_variable("weights3", [hiddenLayerSize2, outLayerSize], initializer=tf.contrib.layers.variance_scaling_initializer() )    
     biases3 = tf.Variable(0.5, dtype = tf.float32, name = "biases3")
 
     normalized = tf.nn.batch_normalization(inPH,train_mean, train_stddev,0.0, 1.0, 0.0, name = "normalized")
